@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>シフト → Googleカレンダー</title>
+<title>妻シフト → Googleカレンダー</title>
 
 <!-- ホーム画面に追加したときの見た目 -->
 <link rel="manifest" href="manifest.json">
@@ -117,7 +117,7 @@
   <header>
     <div class="brand">
       <div class="mark">シ フ ト 連 携</div>
-      <h1>シフト → Googleカレンダー</h1>
+      <h1>妻シフト → Googleカレンダー</h1>
     </div>
     <button class="gear" id="openSettings" aria-label="設定" title="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -132,7 +132,7 @@
 
   <div class="card">
     <h2>① シフト表のスクショ</h2>
-    <div class="sub">のシフトアプリの画面をスクショして選んでください</div>
+    <div class="sub">妻のシフトアプリの画面をスクショして選んでください</div>
     <div class="drop" id="dropZone">
       <div class="big">📷 画像を選ぶ / ドロップ</div>
       <div class="small">PNG・JPG対応</div>
@@ -457,16 +457,18 @@ function doPush(){
   var yy=parseInt(mv[0],10), mm=parseInt(mv[1],10);
   var rows=extracted.slice();
   document.getElementById("pushStatus").innerHTML='<div class="status"><span class="spinner"></span>Googleカレンダーへ反映しています… (0/'+rows.length+')</div>';
-  var done=0, okCount=0, errCount=0;
+  var done=0, okCount=0, errCount=0, firstErr=null;
   function next(){
     if(done>=rows.length){
-      document.getElementById("pushStatus").innerHTML='<div class="status">完了：'+okCount+'件反映'+(errCount?('／'+errCount+'件失敗'):'')+'</div>';
+      var msg='<div class="status">完了：'+okCount+'件反映'+(errCount?('／'+errCount+'件失敗'):'')+'</div>';
+      if(firstErr) msg+='<div class="status" style="color:var(--rose)">エラー内容：'+esc(firstErr)+'</div>';
+      document.getElementById("pushStatus").innerHTML=msg;
       toast(okCount+"件をGoogleカレンダーに反映しました");
       return;
     }
     var row=rows[done];
-    pushOneDay(yy,mm,row.d,row.l,function(ok){
-      if(ok) okCount++; else errCount++;
+    pushOneDay(yy,mm,row.d,row.l,function(ok,err){
+      if(ok) okCount++; else { errCount++; if(!firstErr && err) firstErr=err; }
       done++;
       document.getElementById("pushStatus").innerHTML='<div class="status"><span class="spinner"></span>Googleカレンダーへ反映しています… ('+done+'/'+rows.length+')</div>';
       next();
@@ -503,7 +505,7 @@ function pushOneDay(y,m,d,label,cb){
     }else{
       return gfetch("https://www.googleapis.com/calendar/v3/calendars/"+calId+"/events", {method:"POST", body: JSON.stringify(body)});
     }
-  }).then(function(){ cb(true); }).catch(function(err){ console.error(err); cb(false); });
+  }).then(function(){ cb(true); }).catch(function(err){ console.error(err); cb(false, err && err.message); });
 }
 
 function gfetch(url, opts){
