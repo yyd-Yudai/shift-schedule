@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>妻シフト → Googleカレンダー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{
+    --paper:#F4F2EC; --paper-2:#FBFAF6; --ink:#23272E; --ink-soft:#5A5F68;
+    --line:#E1DCD1; --line-strong:#CFC8B9;
+    --indigo:#33416B; --amber:#D9982B; --sage:#3F7A5C; --rose:#C4677B;
+    --shadow:0 1px 2px rgba(35,39,46,.06),0 8px 24px rgba(35,39,46,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:"Zen Kaku Gothic New",system-ui,sans-serif;background:var(--paper);color:var(--ink);line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:640px;margin:0 auto;padding:22px 16px 80px}
+
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .brand .mark{font-family:"Shippori Mincho",serif;font-size:14px;letter-spacing:.14em;color:var(--ink-soft)}
+  .brand h1{font-family:"Shippori Mincho",serif;font-size:24px;font-weight:700;margin:2px 0 0}
+  .gear{border:1px solid var(--line-strong);background:var(--paper-2);border-radius:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .gear:hover{background:#fff}
+  .gear svg{width:19px;height:19px;color:var(--ink-soft)}
+
+  .status-row{display:flex;align-items:center;gap:8px;margin:16px 0 20px;font-size:13px;color:var(--ink-soft)}
+  .dot{width:8px;height:8px;border-radius:50%;background:#C9C2B2;flex:none}
+  .dot.on{background:var(--sage)}
+  .status-row button{margin-left:auto}
+
+  .btn{font:inherit;font-size:14px;border:1px solid var(--line-strong);background:var(--paper-2);color:var(--ink);border-radius:10px;height:42px;padding:0 16px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:.15s}
+  .btn:hover{background:#fff;border-color:var(--ink-soft)}
+  .btn.primary{background:var(--indigo);border-color:var(--indigo);color:#fff}
+  .btn.primary:hover{background:#2a375c}
+  .btn.primary:disabled{background:#B9BFCE;border-color:#B9BFCE;cursor:not-allowed}
+  .btn.block{width:100%;justify-content:center}
+  .btn svg{width:16px;height:16px}
+
+  .card{background:var(--paper-2);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:20px;margin-bottom:16px}
+  .card h2{font-family:"Shippori Mincho",serif;font-size:17px;margin:0 0 4px}
+  .card .sub{font-size:12.5px;color:var(--ink-soft);margin-bottom:14px}
+
+  .drop{border:1.5px dashed var(--line-strong);border-radius:12px;padding:28px 18px;text-align:center;background:#fff;cursor:pointer}
+  .drop:hover{border-color:var(--indigo)}
+  .drop .big{font-size:14.5px;margin-bottom:3px}
+  .drop .small{font-size:12px;color:var(--ink-soft)}
+  .preview-img{width:100%;border-radius:10px;border:1px solid var(--line);margin-top:12px;display:block;max-height:280px;object-fit:contain;background:#fff}
+
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12.5px;color:var(--ink-soft);margin-bottom:5px;font-weight:500}
+  .field input,.field select{width:100%;font:inherit;font-size:15px;border:1px solid var(--line-strong);background:#fff;border-radius:10px;padding:10px 12px;color:var(--ink)}
+  .field input:focus,.field select:focus{outline:2px solid var(--indigo);outline-offset:1px;border-color:var(--indigo)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+  .status{font-size:13px;color:var(--ink-soft);margin-top:12px;display:flex;align-items:center;gap:8px}
+  .spinner{width:15px;height:15px;border:2px solid var(--line-strong);border-top-color:var(--indigo);border-radius:50%;animation:spin .7s linear infinite;flex:none}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  table.rows{width:100%;border-collapse:collapse;margin-top:14px;font-size:14px}
+  table.rows th{text-align:left;font-size:11.5px;color:var(--ink-soft);font-weight:500;padding:0 6px 6px}
+  table.rows td{padding:5px 6px;border-top:1px solid var(--line)}
+  table.rows td.d{width:52px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+  table.rows select{width:100%;font:inherit;font-size:13.5px;border:1px solid var(--line-strong);border-radius:8px;padding:6px 8px;background:#fff}
+  table.rows .swatch{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:middle}
+  table.rows .rm{border:0;background:none;color:var(--ink-soft);cursor:pointer;padding:4px 6px;border-radius:6px}
+  table.rows .rm:hover{background:var(--line);color:var(--rose)}
+
+  .foot{display:flex;gap:10px;margin-top:16px}
+  .foot .btn{flex:1;justify-content:center}
+
+  .note{font-size:12px;color:var(--ink-soft);background:#F0EEE7;border-radius:10px;padding:10px 12px;margin-top:14px;line-height:1.6}
+  .note a{color:var(--indigo)}
+
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:12px;font-size:13.5px;opacity:0;transition:.25s;z-index:60;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.2);max-width:88vw;text-align:center}
+  .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  .scrim{position:fixed;inset:0;background:rgba(35,39,46,.42);display:none;align-items:flex-end;justify-content:center;z-index:40}
+  .scrim.on{display:flex}
+  @media(min-width:640px){.scrim{align-items:center;padding:20px}}
+  .sheet{background:var(--paper-2);width:100%;max-width:480px;border-radius:18px 18px 0 0;box-shadow:0 -8px 40px rgba(0,0,0,.2);max-height:92vh;overflow:auto}
+  @media(min-width:640px){.sheet{border-radius:18px}}
+  .sheet-h{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;position:sticky;top:0;background:var(--paper-2);border-bottom:1px solid var(--line)}
+  .sheet-h h2{margin:0;font-family:"Shippori Mincho",serif;font-size:18px}
+  .x{border:0;background:none;font-size:24px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:4px 8px;border-radius:8px}
+  .x:hover{background:var(--line)}
+  .sheet-b{padding:16px 18px 22px}
+
+  .type-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .type-row:last-child{border-bottom:0}
+  .type-row .lab{flex:1;font-size:14px}
+  .type-row select{font:inherit;font-size:13px;border:1px solid var(--line-strong);border-radius:8px;padding:6px 8px;background:#fff}
+
+  .stepper{display:flex;gap:6px;margin-bottom:18px}
+  .stepper div{flex:1;height:3px;border-radius:2px;background:var(--line)}
+  .stepper div.on{background:var(--indigo)}
+
+  .empty-hint{font-size:13px;color:var(--ink-soft);text-align:center;padding:6px 0 2px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="mark">シ フ ト 連 携</div>
+      <h1>妻シフト → Googleカレンダー</h1>
+    </div>
+    <button class="gear" id="openSettings" aria-label="設定" title="設定">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </header>
+
+  <div class="status-row">
+    <span class="dot" id="authDot"></span>
+    <span id="authText">Googleに未サインイン</span>
+    <button class="btn" id="signBtn" style="height:32px;font-size:12.5px;padding:0 12px">サインイン</button>
+  </div>
+
+  <div class="card">
+    <h2>① シフト表のスクショ</h2>
+    <div class="sub">妻のシフトアプリの画面をスクショして選んでください</div>
+    <div class="drop" id="dropZone">
+      <div class="big">📷 画像を選ぶ / ドロップ</div>
+      <div class="small">PNG・JPG対応</div>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" hidden>
+    <img id="preview" class="preview-img" style="display:none">
+    <div class="two" style="margin-top:14px">
+      <div class="field" style="margin-bottom:0">
+        <label>取り込む月</label>
+        <select id="monthSel"></select>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>名前の指定（表に複数人いる場合）</label>
+        <input id="nameFilter" placeholder="任意">
+      </div>
+    </div>
+    <div id="readStatus"></div>
+    <div class="foot">
+      <button class="btn primary block" id="runBtn" disabled>① 読み取る</button>
+    </div>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none">
+    <h2>② 内容を確認</h2>
+    <div class="sub">読み間違いがあれば選び直してください</div>
+    <table class="rows" id="rowsTable">
+      <thead><tr><th>日</th><th>シフト</th><th></th></tr></thead>
+      <tbody id="rowsBody"></tbody>
+    </table>
+    <div class="empty-hint" id="rowsEmpty" style="display:none">項目がありません</div>
+    <div class="foot">
+      <button class="btn primary block" id="pushBtn">③ Googleカレンダーへ反映</button>
+    </div>
+    <div id="pushStatus"></div>
+  </div>
+
+  <div class="note">
+    はじめて使うときは、右上の歯車から <b>Googleクライアント ID</b> と <b>Gemini APIキー</b> を入れてください（一度だけ）。<br>
+    このページはブラウザの中だけで動きます。入力した鍵は自分の端末にだけ保存され、外部には送られません。
+  </div>
+</div>
+
+<!-- Settings -->
+<div class="scrim" id="settingsScrim">
+  <div class="sheet">
+    <div class="sheet-h"><h2>設定</h2><button class="x" data-close>×</button></div>
+    <div class="sheet-b">
+      <div class="field">
+        <label>Google クライアントID</label>
+        <input id="cfgClientId" placeholder="xxxxxxxx.apps.googleusercontent.com">
+      </div>
+      <div class="field">
+        <label>Gemini APIキー</label>
+        <input id="cfgGeminiKey" placeholder="AIza...">
+      </div>
+      <div class="note">
+        取得方法が分からない場合は、この画面を作った人（Claude）にチャットで「設定の取得方法を教えて」と聞いてください。手順を案内できます。
+      </div>
+      <div class="foot"><button class="btn primary block" id="cfgSave">保存</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- Shift color mapping -->
+<div class="scrim" id="colorScrim">
+  <div class="sheet">
+    <div class="sheet-h"><div><h2>シフトの色分け</h2></div><button class="x" data-close>×</button></div>
+    <div class="sheet-b">
+      <div id="colorList"></div>
+      <div class="foot"><button class="btn primary block" id="colorSave">保存</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+// ---------- config ----------
+var CFG_KEY="futari-gcal-config-v1";
+var COLOR_KEY="futari-gcal-colors-v1";
+var cfg = { clientId:"", geminiKey:"" };
+var colorMap = {}; // label -> googleColorId
+
+var GCOLORS = [
+  {id:"1",name:"ラベンダー",hex:"#7986CB"},{id:"2",name:"セージ",hex:"#33B679"},
+  {id:"3",name:"ぶどう",hex:"#8E24AA"},{id:"4",name:"フラミンゴ",hex:"#E67C73"},
+  {id:"5",name:"バナナ",hex:"#F6BF26"},{id:"6",name:"タンジェリン",hex:"#F4511E"},
+  {id:"7",name:"ピーコック",hex:"#039BE5"},{id:"8",name:"グラファイト",hex:"#616161"},
+  {id:"9",name:"ブルーベリー",hex:"#3F51B5"},{id:"10",name:"バジル",hex:"#0B8043"},
+  {id:"11",name:"トマト",hex:"#D50000"}
+];
+function guessColor(label){
+  if(/夜|ナイト|準夜/i.test(label)) return "9";
+  if(/明け/i.test(label)) return "7";
+  if(/日勤|日中|早|朝/i.test(label)) return "5";
+  if(/休|公休|off|有|代休|振休/i.test(label)) return "10";
+  return "1";
+}
+
+function loadCfg(){
+  try{ var s=localStorage.getItem(CFG_KEY); if(s) cfg=JSON.parse(s); }catch(e){}
+  try{ var c=localStorage.getItem(COLOR_KEY); if(c) colorMap=JSON.parse(c); }catch(e){}
+}
+function saveCfg(){ localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
+function saveColors(){ localStorage.setItem(COLOR_KEY, JSON.stringify(colorMap)); }
+
+// ---------- ui plumbing ----------
+function show(id){ document.getElementById(id).classList.add("on"); }
+function hide(id){ document.getElementById(id).classList.remove("on"); }
+document.querySelectorAll("[data-close]").forEach(function(b){ b.addEventListener("click",function(){ b.closest(".scrim").classList.remove("on"); }); });
+document.querySelectorAll(".scrim").forEach(function(s){ s.addEventListener("click",function(e){ if(e.target===s) s.classList.remove("on"); }); });
+
+var _toastT=null;
+function toast(msg){
+  var t=document.getElementById("toast"); t.textContent=msg; t.classList.add("on");
+  clearTimeout(_toastT); _toastT=setTimeout(function(){ t.classList.remove("on"); },2600);
+}
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
+function pad(n){ return (n<10?"0":"")+n; }
+
+// ---------- settings ----------
+document.getElementById("openSettings").addEventListener("click", function(){
+  document.getElementById("cfgClientId").value=cfg.clientId||"";
+  document.getElementById("cfgGeminiKey").value=cfg.geminiKey||"";
+  show("settingsScrim");
+});
+document.getElementById("cfgSave").addEventListener("click", function(){
+  cfg.clientId=document.getElementById("cfgClientId").value.trim();
+  cfg.geminiKey=document.getElementById("cfgGeminiKey").value.trim();
+  saveCfg(); hide("settingsScrim");
+  toast("保存しました");
+  initGis();
+});
+
+// ---------- Google sign-in ----------
+var tokenClient=null, accessToken=null, tokenExpiry=0;
+function initGis(){
+  if(!cfg.clientId || typeof google==="undefined" || !google.accounts) return;
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: cfg.clientId,
+    scope: "https://www.googleapis.com/auth/calendar.events",
+    callback: function(resp){
+      if(resp && resp.access_token){
+        accessToken=resp.access_token;
+        tokenExpiry=Date.now()+ (resp.expires_in||3500)*1000;
+        setAuthUi(true);
+        toast("サインインしました");
+      }else{
+        toast("サインインできませんでした");
+      }
+    }
+  });
+}
+function setAuthUi(on){
+  document.getElementById("authDot").classList.toggle("on", !!on);
+  document.getElementById("authText").textContent = on? "Googleにサインイン済み" : "Googleに未サインイン";
+  document.getElementById("signBtn").textContent = on? "再サインイン" : "サインイン";
+}
+function ensureToken(cb){
+  if(!cfg.clientId){ toast("先に設定でクライアントIDを入力してください"); show("settingsScrim"); return; }
+  if(!tokenClient) initGis();
+  if(accessToken && Date.now()<tokenExpiry-15000){ cb(); return; }
+  if(!tokenClient){ toast("読み込み中です。少し待って再試行してください"); return; }
+  tokenClient.callback = function(resp){
+    if(resp && resp.access_token){
+      accessToken=resp.access_token; tokenExpiry=Date.now()+(resp.expires_in||3500)*1000;
+      setAuthUi(true); cb();
+    }else{ toast("サインインできませんでした"); }
+  };
+  tokenClient.requestAccessToken({prompt:""});
+}
+document.getElementById("signBtn").addEventListener("click", function(){ ensureToken(function(){}); });
+
+// ---------- month select ----------
+function fillMonths(){
+  var sel=document.getElementById("monthSel"); sel.innerHTML="";
+  var now=new Date(); var base=new Date(now.getFullYear(), now.getMonth(),1);
+  for(var off=-1; off<=3; off++){
+    var d=new Date(base.getFullYear(), base.getMonth()+off, 1);
+    var v=d.getFullYear()+"-"+pad(d.getMonth()+1);
+    var o=document.createElement("option");
+    o.value=v; o.textContent=d.getFullYear()+"年"+(d.getMonth()+1)+"月";
+    if(off===0) o.selected=true;
+    sel.appendChild(o);
+  }
+}
+
+// ---------- upload ----------
+var imgB64=null, imgMime=null;
+document.getElementById("dropZone").addEventListener("click", function(){ document.getElementById("fileInput").click(); });
+document.getElementById("dropZone").addEventListener("dragover", function(e){ e.preventDefault(); });
+document.getElementById("dropZone").addEventListener("drop", function(e){
+  e.preventDefault();
+  if(e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+document.getElementById("fileInput").addEventListener("change", function(e){
+  if(e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+});
+function handleFile(file){
+  if(!/^image\//.test(file.type)){ toast("画像ファイルを選んでください"); return; }
+  imgMime=file.type;
+  var r=new FileReader();
+  r.onload=function(){
+    imgB64=r.result.split(",")[1];
+    var img=document.getElementById("preview");
+    img.src=r.result; img.style.display="block";
+    document.getElementById("runBtn").disabled=false;
+    document.getElementById("resultCard").style.display="none";
+    document.getElementById("readStatus").innerHTML="";
+  };
+  r.readAsDataURL(file);
+}
+
+// ---------- Gemini extraction ----------
+var extracted=null;
+document.getElementById("runBtn").addEventListener("click", runExtract);
+function runExtract(){
+  if(!cfg.geminiKey){ toast("先に設定でGemini APIキーを入力してください"); show("settingsScrim"); return; }
+  if(!imgB64){ toast("先に画像を選んでください"); return; }
+  var name=document.getElementById("nameFilter").value.trim();
+  document.getElementById("readStatus").innerHTML='<div class="status"><span class="spinner"></span>読み取っています…</div>';
+  document.getElementById("runBtn").disabled=true;
+
+  var prompt =
+    "画像はある月のシフト表です。各日付に割り当てられた勤務（日勤/夜勤/休みなど）を読み取ってください。"+
+    "表記は画像に書かれているとおり（略記なら略記のまま）にしてください。"+
+    (name? ("表に複数人の名前がある場合は「"+name+"」さんの行だけを読み取ってください。"):"表が1人分の場合はそのまま読み取ってください。")+
+    "勤務が空欄・不明の日は含めないでください。"+
+    "次のJSONのみを返してください（前置き・説明・Markdownのコードブロックは一切書かない）: "+
+    '{"days":[{"d":<日の数字>,"l":"<勤務の表記>"}]}';
+
+  fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", {
+    method:"POST",
+    headers:{"Content-Type":"application/json","x-goog-api-key":cfg.geminiKey},
+    body: JSON.stringify({
+      contents:[{ parts:[
+        { inline_data:{ mime_type: imgMime, data: imgB64 } },
+        { text: prompt }
+      ]}]
+    })
+  }).then(function(r){ return r.json(); }).then(function(res){
+    if(res.error) throw new Error(res.error.message||"api error");
+    var text=((res.candidates||[])[0]||{}).content;
+    text=(text&&text.parts||[]).map(function(p){return p.text||"";}).join("").trim();
+    var clean=text.replace(/```json/gi,"").replace(/```/g,"").trim();
+    var m=clean.indexOf("{"); var e2=clean.lastIndexOf("}");
+    if(m>=0&&e2>=0) clean=clean.slice(m,e2+1);
+    var parsed=JSON.parse(clean);
+    if(!parsed.days) throw new Error("empty");
+    extracted=parsed.days.filter(function(x){return x.d && x.l;});
+    document.getElementById("readStatus").innerHTML='<div class="status">'+extracted.length+'日分を読み取りました。内容を確認してください。</div>';
+    renderRows();
+    document.getElementById("resultCard").style.display="block";
+    document.getElementById("resultCard").scrollIntoView({behavior:"smooth",block:"start"});
+  }).catch(function(err){
+    document.getElementById("readStatus").innerHTML='<div class="status" style="color:var(--rose)">読み取れませんでした（'+esc(err.message||"")+'）。別の画像で試すか、下で手動で直してください。</div>';
+    extracted=extracted||[];
+    renderRows();
+    document.getElementById("resultCard").style.display="block";
+  }).finally(function(){
+    document.getElementById("runBtn").disabled=false;
+  });
+}
+
+function allLabels(){
+  var set={};
+  (extracted||[]).forEach(function(x){ set[x.l]=true; });
+  Object.keys(colorMap).forEach(function(k){ set[k]=true; });
+  return Object.keys(set);
+}
+
+function renderRows(){
+  var body=document.getElementById("rowsBody");
+  var rows=(extracted||[]).slice().sort(function(a,b){return a.d-b.d;});
+  document.getElementById("rowsEmpty").style.display = rows.length? "none":"block";
+  var labels=allLabels();
+  body.innerHTML=rows.map(function(x,i){
+    var cid=colorMap[x.l]||guessColor(x.l);
+    var opts=labels.map(function(l){return '<option value="'+esc(l)+'"'+(l===x.l?" selected":"")+'>'+esc(l)+'</option>';}).join("");
+    var sw=(GCOLORS.filter(function(g){return g.id===cid;})[0]||{}).hex||"#999";
+    return '<tr data-i="'+i+'"><td class="d">'+x.d+'日</td><td><span class="swatch" style="background:'+sw+'"></span><select class="lbl">'+opts+'<option value="__new__">＋新しい入力…</option></select></td><td><button class="rm" data-i="'+i+'">✕</button></td></tr>';
+  }).join("");
+  body.querySelectorAll("select.lbl").forEach(function(sel, idx){
+    sel.addEventListener("change", function(){
+      if(sel.value==="__new__"){
+        var v=prompt_("新しい勤務の表記を入力してください");
+        if(v){ rows[idx].l=v; if(!colorMap[v]) colorMap[v]=guessColor(v); renderRows(); }
+        else { renderRows(); }
+        return;
+      }
+      rows[idx].l=sel.value; renderRows();
+    });
+  });
+  body.querySelectorAll(".rm").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var i=parseInt(btn.getAttribute("data-i"),10);
+      rows.splice(i,1); extracted=rows; renderRows();
+    });
+  });
+  extracted=rows;
+}
+function prompt_(msg){ return window.prompt(msg); }
+
+// ---------- push to Google Calendar ----------
+document.getElementById("pushBtn").addEventListener("click", function(){
+  if(!extracted || !extracted.length){ toast("反映する内容がありません"); return; }
+  ensureToken(function(){ doPush(); });
+});
+
+function doPush(){
+  var mv=document.getElementById("monthSel").value.split("-");
+  var yy=parseInt(mv[0],10), mm=parseInt(mv[1],10);
+  var rows=extracted.slice();
+  document.getElementById("pushStatus").innerHTML='<div class="status"><span class="spinner"></span>Googleカレンダーへ反映しています… (0/'+rows.length+')</div>';
+  var done=0, okCount=0, errCount=0;
+  function next(){
+    if(done>=rows.length){
+      document.getElementById("pushStatus").innerHTML='<div class="status">完了：'+okCount+'件反映'+(errCount?('／'+errCount+'件失敗'):'')+'</div>';
+      toast(okCount+"件をGoogleカレンダーに反映しました");
+      return;
+    }
+    var row=rows[done];
+    pushOneDay(yy,mm,row.d,row.l,function(ok){
+      if(ok) okCount++; else errCount++;
+      done++;
+      document.getElementById("pushStatus").innerHTML='<div class="status"><span class="spinner"></span>Googleカレンダーへ反映しています… ('+done+'/'+rows.length+')</div>';
+      next();
+    });
+  }
+  next();
+}
+
+function dateStr(y,m,d){ return y+"-"+pad(m)+"-"+pad(d); }
+function nextDateStr(y,m,d){ var nx=new Date(y,m-1,d+1); return nx.getFullYear()+"-"+pad(nx.getMonth()+1)+"-"+pad(nx.getDate()); }
+
+function pushOneDay(y,m,d,label,cb){
+  var ds=dateStr(y,m,d);
+  var propKey="futariShiftDate";
+  var url="https://www.googleapis.com/calendar/v3/calendars/primary/events?privateExtendedProperty="+encodeURIComponent(propKey+"="+ds);
+  gfetch(url,{method:"GET"}).then(function(res){
+    var existing=(res.items||[])[0];
+    var colorId=colorMap[label]||guessColor(label);
+    if(!colorMap[label]){ colorMap[label]=colorId; saveColors(); }
+    var body={
+      summary: label,
+      start:{date:ds}, end:{date: nextDateStr(y,m,d)},
+      colorId: colorId,
+      transparency:"transparent",
+      extendedProperties:{ private:{ futariShiftDate: ds, futariShiftApp:"futari-shift" } }
+    };
+    if(existing){
+      return gfetch("https://www.googleapis.com/calendar/v3/calendars/primary/events/"+existing.id, {method:"PATCH", body: JSON.stringify(body)});
+    }else{
+      return gfetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {method:"POST", body: JSON.stringify(body)});
+    }
+  }).then(function(){ cb(true); }).catch(function(err){ console.error(err); cb(false); });
+}
+
+function gfetch(url, opts){
+  opts=opts||{};
+  var headers=Object.assign({"Authorization":"Bearer "+accessToken,"Content-Type":"application/json"}, opts.headers||{});
+  return fetch(url, Object.assign({}, opts, {headers:headers})).then(function(r){
+    if(!r.ok){ return r.json().then(function(j){ throw new Error((j.error&&j.error.message)||r.status); }); }
+    if(r.status===204) return {};
+    return r.json();
+  });
+}
+
+// ---------- color mapping settings (accessible via long note tap not required; simple auto) ----------
+
+// ---------- boot ----------
+loadCfg();
+fillMonths();
+setAuthUi(false);
+window.addEventListener("load", function(){
+  var check=setInterval(function(){
+    if(typeof google!=="undefined" && google.accounts){ clearInterval(check); initGis(); }
+  },200);
+});
+})();
+</script>
+</body>
+</html>
