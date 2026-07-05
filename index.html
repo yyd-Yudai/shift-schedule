@@ -320,7 +320,7 @@ document.getElementById("signBtn").addEventListener("click", function(){ ensureT
 function fillMonths(){
   var sel=document.getElementById("monthSel"); sel.innerHTML="";
   var now=new Date(); var base=new Date(now.getFullYear(), now.getMonth(),1);
-  for(var off=-1; off<=3; off++){
+  for(var off=-3; off<=3; off++){
     var d=new Date(base.getFullYear(), base.getMonth()+off, 1);
     var v=d.getFullYear()+"-"+pad(d.getMonth()+1);
     var o=document.createElement("option");
