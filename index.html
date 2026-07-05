@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>妻シフト → Googleカレンダー</title>
+<title>シフト → Googleカレンダー</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
@@ -65,7 +65,8 @@
   table.rows td{padding:5px 6px;border-top:1px solid var(--line)}
   table.rows td.d{width:52px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
   table.rows select{width:100%;font:inherit;font-size:13.5px;border:1px solid var(--line-strong);border-radius:8px;padding:6px 8px;background:#fff}
-  table.rows .swatch{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:middle}
+  .swatch{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:middle;flex:none}
+  table.rows .swatch{margin-right:6px}
   table.rows .rm{border:0;background:none;color:var(--ink-soft);cursor:pointer;padding:4px 6px;border-radius:6px}
   table.rows .rm:hover{background:var(--line);color:var(--rose)}
 
@@ -122,7 +123,7 @@
 
   <div class="card">
     <h2>① シフト表のスクショ</h2>
-    <div class="sub">妻のシフトアプリの画面をスクショして選んでください</div>
+    <div class="sub">シフトアプリの画面をスクショして選んでください</div>
     <div class="drop" id="dropZone">
       <div class="big">📷 画像を選ぶ / ドロップ</div>
       <div class="small">PNG・JPG対応</div>
@@ -185,6 +186,7 @@
       <div class="note">
         取得方法が分からない場合は、この画面を作った人（Claude）にチャットで「設定の取得方法を教えて」と聞いてください。手順を案内できます。
       </div>
+      <div class="foot"><button class="btn block" id="openColors" type="button">シフトの色を編集</button></div>
       <div class="foot"><button class="btn primary block" id="cfgSave">保存</button></div>
     </div>
   </div>
@@ -506,6 +508,53 @@ function gfetch(url, opts){
 }
 
 // ---------- color mapping settings (accessible via long note tap not required; simple auto) ----------
+
+// ---------- color mapping settings ----------
+document.getElementById("openColors").addEventListener("click", function(){
+  hide("settingsScrim");
+  renderColorList();
+  show("colorScrim");
+});
+function knownLabels(){
+  var set={};
+  Object.keys(colorMap).forEach(function(k){ set[k]=true; });
+  (extracted||[]).forEach(function(x){ set[x.l]=true; });
+  return Object.keys(set);
+}
+function renderColorList(){
+  var labels=knownLabels();
+  var box=document.getElementById("colorList");
+  if(!labels.length){
+    box.innerHTML='<div class="empty-hint">まだ種類がありません。まず画像を読み取ると、ここに出てきます。</div>';
+    return;
+  }
+  box.innerHTML=labels.map(function(l){
+    var cid=colorMap[l]||guessColor(l);
+    var opts=GCOLORS.map(function(g){
+      return '<option value="'+g.id+'"'+(g.id===cid?" selected":"")+'>'+esc(g.name)+'</option>';
+    }).join("");
+    return '<div class="type-row" data-l="'+esc(l)+'"><span class="swatch" style="background:'+((GCOLORS.filter(function(g){return g.id===cid;})[0]||{}).hex||"#999")+'"></span><span class="lab">'+esc(l)+'</span><select class="colsel">'+opts+'</select></div>';
+  }).join("");
+  box.querySelectorAll(".colsel").forEach(function(sel){
+    sel.addEventListener("change", function(){
+      var row=sel.closest(".type-row");
+      var sw=row.querySelector(".swatch");
+      var g=GCOLORS.filter(function(x){return x.id===sel.value;})[0];
+      if(g) sw.style.background=g.hex;
+    });
+  });
+}
+document.getElementById("colorSave").addEventListener("click", function(){
+  document.querySelectorAll("#colorList .type-row").forEach(function(row){
+    var l=row.getAttribute("data-l");
+    var v=row.querySelector(".colsel").value;
+    colorMap[l]=v;
+  });
+  saveColors();
+  hide("colorScrim");
+  renderRows();
+  toast("色を保存しました");
+});
 
 // ---------- boot ----------
 loadCfg();
